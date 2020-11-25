@@ -8,12 +8,12 @@ def process_transaction(transactionid, inputs, outputs):
 
 	#for each input, calculate their proportion of contribution
 	#if len(inputs) > 0:
-	inputs = pd.DataFrame(inputs).astype(int)
+	inputs = pd.DataFrame(inputs).astype(float)
 	inputs[5] = inputs[5]/inputs[5].sum()
 	#print(inputs)
 
 	#draw an edge from an input to each output, with weight as the sum received times proportion of contribution
-	outputs = pd.DataFrame(outputs).astype(int)
+	outputs = pd.DataFrame(outputs).astype(float)
 	#print(outputs)
 
 	edges = []
@@ -25,9 +25,13 @@ def process_transaction(transactionid, inputs, outputs):
 	for index, input_row in inputs.iterrows():
 		for index, output_row in outputs.iterrows():
 			weight = output_row[3]*input_row[5]
+			#print(weight, output_row[3], input_row[5])
 			in_addr = input_row[4]
 			out_addr = output_row[2]
+			if int(in_addr) == -1 or int(out_addr) == -1:
+				print("address -1")
 			edges.append([int(transactionid), int(in_addr), int(out_addr), int(weight)])
+
 
 	return edges
 
@@ -37,12 +41,12 @@ def check_numPairs(edgelist, goal_num = 100824):
 	#print(edgelist)
 	edgelist = np.concatenate(np.array(edgelist), 0)
 	
-	x =edgelist[:, 1]
+	x = edgelist[:, 1]
 	y = edgelist[:, 2]
 
-	#tuples = list(zip(x,y))
-	#numpairs = len(set(tuples))
-	numpairs = len(x)
+	tuples = list(zip(x,y))
+	numpairs = len(set(tuples))
+	#numpairs = len(x)
 
 	numtransactions = len(list(set(edgelist[:, 0])))
 	numaccounts = len(set(list(x) + list(y)))
@@ -68,12 +72,14 @@ myoutput = None
 
 alledges = []
 
+
 while True:
 	transaction = trans.readline().strip().split("\t")
 	transactionid, blockid, num_inputs, num_outputs = transaction[0], transaction[1], transaction[2], transaction[3]
 	#print(transactionid, blockid, num_inputs, num_outputs)
 	myinputs = []
 	myoutputs = []
+
 
 	#then, start reading both files keeping track of current transaction id
 	if int(num_inputs) >0:
@@ -99,7 +105,7 @@ while True:
 
 			#if output transaction id is = to our current, add it
 			if int(output_txnum) == int(transactionid):
-				myoutputs.append(myinput)
+				myoutputs.append(myoutput)
 				myoutput = outputs.readline().strip().split("\t")
 				output_txnum = myoutput[0]
 
