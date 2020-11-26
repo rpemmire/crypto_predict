@@ -150,7 +150,7 @@ def main():
 
     #get all 10 graphs and their random sequences
     data_path = '../../data/first100k.dat.xz'
-    graphs = get_reachabilities(data_path)
+    graphs = get_reachabilities(data_path, .125, .5)
 
     #for graphs 1-9,
         #train word2vec model to get embeddings
@@ -158,6 +158,8 @@ def main():
 
 
         #train a model on the graph to identify the correct edge weight
+            #inputs: (node combos, their respective embedding combos)
+            #labels: (whether or not those tranactions happen (if edge weight>1))
         #test prediction model on the next graph
 
 
