@@ -12,19 +12,14 @@ class Node2Vec(tf.keras.Model):
         """
 
         super(Model, self).__init__()
-
+        '''
+        Initialize embedding matrix, linear layer, optimizer, sizes, etc.
+        '''
 
 
     def call(self, inputs, initial_state):
         """
-        - You must use an embedding layer as the first layer of your network (i.e. tf.nn.embedding_lookup)
-        - You must use an LSTM or GRU as the next layer.
-
-        :param inputs: word ids of shape (batch_size, window_size)
-        :param initial_state: 2-d array of shape (batch_size, rnn_size) as a tensor
-        :return: the batch element probabilities as a tensor, a final_state (Note 1: If you use an LSTM, the final_state will be the last two RNN outputs,
-        Note 2: We only need to use the initial state during generation)
-        using LSTM and only the probabilites as a tensor and a final_state as a tensor when using GRU
+        Basic embedding to linear layer
         """
         #TODO: Fill in
 
@@ -32,15 +27,7 @@ class Node2Vec(tf.keras.Model):
         #embedding layer output has to be (batch_size, window_size, embedding_size)
         #embeddings = []
         '''
-        embeddings =[]
-        for i in range(self.window_size):
-            embeddings.append(tf.nn.embedding_lookup(self.E,inputs[:,i]))
-            #print(inputs.shape)
-            #each entry is batch size, embedding size
-            #print(tf.nn.embedding_lookup(self.E,inputs[:,i]).shape)
-
-        embeddings = tf.concat(embeddings, axis = -1)
-        embedding = tf.reshape(embeddings, (inputs.shape[0], self.window_size, self.embedding_size))
+        Keras embedding layer to linear output layer
 
         '''
 
@@ -48,13 +35,7 @@ class Node2Vec(tf.keras.Model):
 
     def loss(self, probs, labels):
         """
-        Calculates average cross entropy sequence to sequence loss of the prediction
-
-        NOTE: You have to use np.reduce_mean and not np.reduce_sum when calculating your loss
-
-        :param logits: a matrix of shape (batch_size, window_size, vocab_size) as a tensor
-        :param labels: matrix of shape (batch_size, window_size) containing the labels
-        :return: the loss of the model as a tensor of size 1
+        Follow loss in the paper
         """
 
         #TODO: Fill in
@@ -67,7 +48,7 @@ class Node2Vec(tf.keras.Model):
 class Predictor(tf.keras.Model):
     def __init__(self, vocab_size):
         """
-        The Model class predicts the next words in a sequence.
+        Basic feed forward network taking in two embeddings and outputting label 1 or 0
 
         :param vocab_size: The number of unique words in the data
         """
@@ -78,32 +59,14 @@ class Predictor(tf.keras.Model):
 
     def call(self, inputs, initial_state):
         """
-        - You must use an embedding layer as the first layer of your network (i.e. tf.nn.embedding_lookup)
-        - You must use an LSTM or GRU as the next layer.
-
-        :param inputs: word ids of shape (batch_size, window_size)
-        :param initial_state: 2-d array of shape (batch_size, rnn_size) as a tensor
-        :return: the batch element probabilities as a tensor, a final_state (Note 1: If you use an LSTM, the final_state will be the last two RNN outputs,
-        Note 2: We only need to use the initial state during generation)
-        using LSTM and only the probabilites as a tensor and a final_state as a tensor when using GRU
+        feedforward prediction
         """
         #TODO: Fill in
 
 
         #embedding layer output has to be (batch_size, window_size, embedding_size)
         #embeddings = []
-        '''
-        embeddings =[]
-        for i in range(self.window_size):
-            embeddings.append(tf.nn.embedding_lookup(self.E,inputs[:,i]))
-            #print(inputs.shape)
-            #each entry is batch size, embedding size
-            #print(tf.nn.embedding_lookup(self.E,inputs[:,i]).shape)
 
-        embeddings = tf.concat(embeddings, axis = -1)
-        embedding = tf.reshape(embeddings, (inputs.shape[0], self.window_size, self.embedding_size))
-
-        '''
 
         return probs, final_state
 
@@ -125,7 +88,7 @@ class Predictor(tf.keras.Model):
         return tf.reduce_mean(losses)
 
 
-def train(model, train_inputs, train_labels):
+def train_Node2Vec(model, train_inputs, train_labels):
     """
     Runs through one epoch - all training examples.
 
@@ -138,8 +101,20 @@ def train(model, train_inputs, train_labels):
 
     pass
 
+def train_Predict(model, train_inputs, train_labels):
+    """
+    Runs through one epoch - all training examples.
 
-def test(model, test_inputs, test_labels):
+    :param model: the initilized model to use for forward and backward pass
+    :param train_inputs: train inputs (all inputs for training) of shape (num_inputs,)
+    :param train_labels: train labels (all labels for training) of shape (num_labels,)
+    :return: None
+    """
+
+
+    pass
+
+def test_Predict(model, test_inputs, test_labels):
     """
     hello
     """
@@ -152,15 +127,25 @@ def main():
     data_path = '../../data/first100k.dat.xz'
     graphs = get_reachabilities(data_path, .125, .5)
 
-    #for graphs 1-9,
-        #train word2vec model to get embeddings
-        #get random walks as inputs and labels (skipgram)
+    #initialize prediction (must be trained across graphs)
+    for i in range(len(graphs)-1):
+        #initialize word2vec (must be reinitialized for each graph)
+
+
+        #get random walks and return as inputs and labels (skipgram)
+        random_walks = get_randomWalks(graphs[i], .125, .5, 40, 10)
+        inputs, labels, nodetoID_dict = Node2Vec_getData(random_walks)
+
+        #train word2vec model to get embeddings (return in a dictionary)
+        nodeIDtoEmbedding = train_Node2Vec(inputs, labels, nodetoID_dict)
 
 
         #train a model on the graph to identify the correct edge weight
             #inputs: (node combos, their respective embedding combos)
             #labels: (whether or not those tranactions happen (if edge weight>1))
+        train_inputs, train_labels = Prediction_getData(nodeIDtoEmbedding, graphs[i])
         #test prediction model on the next graph
+        test_inputs, test_labels = Prediction_getData(nodeIDtoEmbedding, graphs[i+1])
 
 
 

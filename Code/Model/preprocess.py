@@ -44,11 +44,12 @@ def get_reachabilities(file_path, opt_out, decay_rate):
     #initialize graph
     G = nx.Graph()
 
+    #for each graph update, make a new graph
     for edgelist in transactionLists:
 
         newEdgeList = []
         #make the edge list irrespective of direction
-        #do this by sorting so that smaller id is in front
+        #do this by sorting so that smaller id is in front and then taking set()
         for createEdge in set(edgelist):
             if createEdge[1]<createEdge[0]:
                 sender = createEdge[1]
@@ -82,7 +83,7 @@ def get_reachabilities(file_path, opt_out, decay_rate):
             else:
                 G.add_edge(src,dst,weight=1)
 
-        #3) update all nodes, if < threshold, delete node
+        #3) update all nodes, if sum of edge weights < threshold, delete node
         to_remove = []
         for node in G.nodes():
             edges = G.edges(node, data = True)
@@ -115,7 +116,7 @@ def get_amounts(file_path):
     return None
 
 
-def get_randomWalks(graph, opt_out, length, walks_per_node):
+def get_randomWalks(G, opt_out, length, walks_per_node):
     #get random walks for a given graph
     #output all sequences in forms of np.array(walks by walk_length)
 
@@ -125,4 +126,12 @@ def get_randomWalks(graph, opt_out, length, walks_per_node):
 
 
 
+    pass
+
+def Node2Vec_getData():
+    #return skipgram labels and outputs, with a dictionary, (all translated from 1 to n)
+    pass
+
+def Prediction_getData():
+    #return pairs of nodes, their embeddings, and ground truths
     pass
