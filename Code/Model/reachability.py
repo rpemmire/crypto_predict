@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras import Model
 from preprocess import get_reachabilities
+from preprocess import get_randomWalks
 
 class Node2Vec(tf.keras.Model):
     def __init__(self, vocab_size):
@@ -189,17 +190,28 @@ def main():
     prev_walk = None
     #get all 10 graphs and their random sequences
     data_path = '../../data/first100k.dat.xz'
-    graphs = get_reachabilities(data_path, .125, .5)
+    #returns new added edges for all graphs and all graphs
+    graphs, added_Edges = get_reachabilities(data_path, .125, .5)
+    random_walks = None
 
-    predict_model = Predictor()
+    #predict_model = Predictor()
     #initialize prediction (must be trained across graphs)
-    for i in range(len(graphs)-1):
+    for i in range(len(graphs)):
         #initialize word2vec (must be reinitialized for each graph)
-        numNodes = len(graphs[i].nodes())
-        embed_model = Node2Vec(numNodes)
+        #numNodes = len(graphs[i].nodes())
+        #embed_model = Node2Vec(numNodes)
 
         #get random walks and return as inputs and labels (skipgram)
-        random_walks = get_randomWalks(graphs[i], random_walks, .125, .5, 40, 10)
+        #pass in the added_Edges from the previous graph
+        if i ==0:
+            new_edges = None
+        else:
+            new_edges = added_Edges[i]
+        print(i)
+        print(len(graphs[i].nodes()))
+        random_walks = get_randomWalks(graphs[i], random_walks, new_edges, .125, .5, 40, 10)
+
+    #TODO, append walks
 
         '''
         data, nodetoID_dict = Node2Vec_getData(random_walks, numNodes, embed_model.window_size)

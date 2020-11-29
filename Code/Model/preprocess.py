@@ -4,6 +4,8 @@ from functools import reduce
 import lzma
 import networkx as nx
 import random
+import queue as q
+import random
 
 #hyperparameters
 decay_rate = 1/2 #1/(2^delta_t)
@@ -27,10 +29,9 @@ def get_reachabilities(file_path, opt_out, decay_rate):
     edges = np.loadtxt(file, int)
     sender = edges[:,1]
     receiver = edges[:,2]
-
     transactionLists = []
     pairs = list(zip(sender, receiver))
-    while len(transactionLists) < 10:
+    while len(transactionLists) < 2:
         graph_edges = []
         while len(set(graph_edges)) < 10000:
             graph_edges.append(pairs.pop(0))
@@ -45,10 +46,17 @@ def get_reachabilities(file_path, opt_out, decay_rate):
     #initialize graph
     G = nx.Graph()
 
+    added_Edges = {}
+    #setting the dictionary to keep track of all nodes that are added
+    # to be used when updating random walks
+    for i in range(10):
+        added_Edges[i] = []
+    #index to keep track of which graph we adding edges to
+    graph = -1
     #for each graph update, make a new graph
     for edgelist in transactionLists:
-
         newEdgeList = []
+        graph += 1
         #make the edge list irrespective of direction
         #do this by sorting so that smaller id is in front and then taking set()
         for createEdge in set(edgelist):
@@ -74,6 +82,7 @@ def get_reachabilities(file_path, opt_out, decay_rate):
             #print(createEdge)
             src = createEdge[0]
             dst = createEdge[1]
+            added_Edges[graph].append(src)
 
             # if edge already exists, add 1 to attribute
             if G.has_edge(src, dst):
@@ -97,8 +106,12 @@ def get_reachabilities(file_path, opt_out, decay_rate):
 
         print("graph created", len(G.nodes()))
         FinalGraphs.append(G)
+        graph +=1
 
-    return FinalGraphs
+    for key in added_Edges:
+        added_Edges[key] = set(added_Edges[key])
+    print(len(FinalGraphs[1].nodes()))
+    return FinalGraphs, added_Edges
 
 def get_amounts(file_path):
     '''
@@ -111,33 +124,133 @@ def get_amounts(file_path):
 
     '''
 
-    file = lzma.open('../../.dat.xz', mode='rt')
+    #gets list of new edges to be updated for each of 10 timesteps
+    file = lzma.open(file_path, mode='rt')
+    edges = np.loadtxt(file, int)
+    sender = edges[:,1]
+    receiver = edges[:,2]
+    weight = edges[:,3]
+
+
+
+    print('partitioned data')
 
     return None
 
 
-def get_randomWalks(G, opt_out, length, walks_per_node):
+
+
+def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_per_node):
     #get random walks for a given graph
     #output all sequences in forms of np.array(walks by walk_length)
     #10 walks each node at each timestep, training on all previousy created, but recently updated, walks
+    #https://networkx.org/documentation/stable/tutorial.html
+    nodes = G.nodes()
+    #creating a dictionary of walks to keep track of each nodes walk #
+    node_dict = {}
+    queue1 = q.Queue()
+    #keeping track of which row in the output matrix to addd the walk to
+    i = 0
+    #creating a matrix of walks
+    size = len(nodes)*walks_per_node
+    walk_mat = np.zeros((size,41))
+    # for node in nodes:
+    #     queue1.put(node)
+    #     node_dict[node] = 0
+    #     print('added')
+    # print(queue1.qsize())
+    # while not queue1.empty():
+    #     walk = generate_walk(G, length)
+    #     matched = False
+    #     while matched == False:
+    #         node = queue1.get()
+    #         if node in walk:
+    #             node_dict[node] +=1
+    #             walk.append(1)
+    #             walk_mat[i] = walk
+    #             i+=1
+    #             if node_dict[node] < walks_per_node:
+    #                 queue1.put(node)
+    #             matched = True
+    #         else:
+    #             queue1.put(node)
+    #         print(queue1.qsize())
+    print('hi')
+    print(np.shape(prev_walks))
+    for node in nodes:
+        node_dict[node] = 0
+    num_finished = 0
+    while not num_finished == len(nodes):
+        walk = generate_walk(G, length)
+        matched = False
+        ind = random.randint(0,length-1)
+        num_times = 0
+        while matched == False:
+            node = walk[ind]
+            num_times += 1
+            if node_dict[node] < 10:
+                node_dict[node] +=1
+                walk.append(1)
+                walk_mat[i] = walk
+                i+=1
+                matched = True
+            if node_dict[node] == walks_per_node:
+                num_finished += 1
 
-    #for each node, get 10 random walks of length 40
-    sequences = []
-    #while len(sequences != 10)
-    # i = 0
-    # while true:
-        #proudce 100 walks
-        #node = nodes[i]
-        #for walkj in walks:
-            #if node in walkj
-            #add walkj to walks of node
-            #if node has 10 walks
-                #i +=1
-                #break
-        # if i = final node index +1
-            #False
+            if ind < length - 1:
+                ind += 1
+            else:
+                ind = 0
+            if num_times == 40:
+                break
 
-    pass
+
+    for row in range(np.shape(prev_walks)[0]):
+        if prev_walks[row,39] in new_Edges:
+            prev_walks[row,40] = prev_walks[row,length] *d_factor
+        if prev_walks[row,40] <= opt_out:
+            np.delete(prev_walks[row,40])
+
+    if prev_walks is not None:
+        final = np.stack(walk_mat,prev_walks)
+    else:
+        final = walk_mat
+    return final
+
+
+    #after all this append previous walks and decrement
+
+    #what to return
+
+
+def generate_walk(G,length):
+    '''
+    Creates one random walk of given length
+
+    :param G: the graphs
+    :param length: the length of the random walk - number of steps
+
+    :return: walk - list of nodes visited
+    '''
+    # list of 40 nodes
+    # get number of edges and plug output into random number gnenerator
+    nodes = list(G.nodes())
+    walk = []
+    # choose a random start node
+    node_ind = random.randint(0, len(nodes) - 1)
+    start_node = nodes[node_ind]
+    walk.append(start_node)
+    node = start_node
+    #getting all walks
+    while(len(walk) < length):
+        #all neighbors for node
+        neighbors = list(G.neighbors(node))
+        num_neigh = len(neighbors)
+        neigh_ind = random.randint(0,num_neigh-1)
+        #get next node in walk
+        node = neighbors[neigh_ind]
+        walk.append(node)
+    return walk
 
 def Node2Vec_getData(randomWalks, numNodes, window_sz):
     #return skipgram (labels, outputs) tuple np, with a dictionary, (all translated from 1 to n)
