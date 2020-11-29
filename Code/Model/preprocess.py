@@ -51,6 +51,7 @@ def get_reachabilities(file_path, opt_out, decay_rate):
     # to be used when updating random walks
     for i in range(10):
         added_Edges[i] = []
+
     #index to keep track of which graph we adding edges to
     graph = -1
     #for each graph update, make a new graph
@@ -82,7 +83,6 @@ def get_reachabilities(file_path, opt_out, decay_rate):
             #print(createEdge)
             src = createEdge[0]
             dst = createEdge[1]
-            added_Edges[graph].append(src)
 
             # if edge already exists, add 1 to attribute
             if G.has_edge(src, dst):
@@ -90,6 +90,7 @@ def get_reachabilities(file_path, opt_out, decay_rate):
             # else add in new edge with attribute 1
             else:
                 G.add_edge(src,dst,weight=1)
+                added_Edges[graph].append(src)
 
         #3) update all nodes, if sum of edge weights < threshold, delete node
         to_remove = []
@@ -106,11 +107,11 @@ def get_reachabilities(file_path, opt_out, decay_rate):
 
         print("graph created", len(G.nodes()))
         FinalGraphs.append(G)
-        graph +=1
 
     for key in added_Edges:
         added_Edges[key] = set(added_Edges[key])
     print(len(FinalGraphs[1].nodes()))
+
     return FinalGraphs, added_Edges
 
 def get_amounts(file_path):
@@ -132,7 +133,6 @@ def get_amounts(file_path):
     weight = edges[:,3]
 
 
-
     print('partitioned data')
 
     return None
@@ -150,7 +150,7 @@ def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_p
     node_dict = {}
     queue1 = q.Queue()
     #keeping track of which row in the output matrix to addd the walk to
-    i = 0
+    walk_index = 0
     #creating a matrix of walks
     size = len(nodes)*walks_per_node
     walk_mat = np.zeros((size,41))
@@ -191,8 +191,8 @@ def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_p
             if node_dict[node] < 10:
                 node_dict[node] +=1
                 walk.append(1)
-                walk_mat[i] = walk
-                i+=1
+                walk_mat[walk_index] = walk
+                walk_index+=1
                 matched = True
             if node_dict[node] == walks_per_node:
                 num_finished += 1
