@@ -106,11 +106,11 @@ def get_reachabilities(file_path, opt_out, decay_rate):
         print(len(to_remove), "nodes removed")
 
         print("graph created", len(G.nodes()))
-        FinalGraphs.append(G)
+        graphAtT = G.copy()
+        FinalGraphs.append(graphAtT)
 
     for key in added_Edges:
         added_Edges[key] = set(added_Edges[key])
-    print(len(FinalGraphs[1].nodes()))
 
     return FinalGraphs, added_Edges
 
@@ -139,7 +139,6 @@ def get_amounts(file_path):
 
 
 
-
 def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_per_node):
     #get random walks for a given graph
     #output all sequences in forms of np.array(walks by walk_length)
@@ -148,7 +147,6 @@ def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_p
     nodes = G.nodes()
     #creating a dictionary of walks to keep track of each nodes walk #
     node_dict = {}
-    queue1 = q.Queue()
     #keeping track of which row in the output matrix to addd the walk to
     walk_index = 0
     #creating a matrix of walks
@@ -175,52 +173,63 @@ def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_p
     #         else:
     #             queue1.put(node)
     #         print(queue1.qsize())
-    print('hi')
-    print(np.shape(prev_walks))
     for node in nodes:
         node_dict[node] = 0
     num_finished = 0
+    print('first')
     while not num_finished == len(nodes):
         walk = generate_walk(G, length)
         matched = False
         ind = random.randint(0,length-1)
         num_times = 0
         while matched == False:
+            # print(num_finished)
             node = walk[ind]
             num_times += 1
             if node_dict[node] < 10:
-                node_dict[node] +=1
                 walk.append(1)
                 walk_mat[walk_index] = walk
                 walk_index+=1
+                print(walk_index)
                 matched = True
+            node_dict[node] +=1
             if node_dict[node] == walks_per_node:
                 num_finished += 1
-
             if ind < length - 1:
                 ind += 1
             else:
                 ind = 0
             if num_times == 40:
                 break
+    print(size)
+    print(num_finished)
+    print(np.count_nonzero(walk_mat))
+    print(walk_mat[:,:])
 
 
-    for row in range(np.shape(prev_walks)[0]):
-        if prev_walks[row,39] in new_Edges:
-            prev_walks[row,40] = prev_walks[row,length] *d_factor
-        if prev_walks[row,40] <= opt_out:
-            np.delete(prev_walks[row,40])
-
+    print('second')
     if prev_walks is not None:
-        final = np.stack(walk_mat,prev_walks)
+
+        print("updating prevwalks")
+        for row in range(np.shape(prev_walks)[0]-1,-1,-1):
+            #print(row)
+            if prev_walks[row,39] in new_Edges:
+                prev_walks[row,40] = prev_walks[row,length] *d_factor
+
+
+        indices = []
+        for row in range(np.shape(prev_walks)[0]-1,-1,-1):
+            if prev_walks[row,40] <= opt_out:
+                indices.append(row)
+        prev_walks = np.delete(prev_walks,indices,0)
+
+        print('before stiack')
+        final = np.concatenate([walk_mat,prev_walks], axis = 0)
     else:
         final = walk_mat
     return final
 
 
-    #after all this append previous walks and decrement
-
-    #what to return
 
 
 def generate_walk(G,length):

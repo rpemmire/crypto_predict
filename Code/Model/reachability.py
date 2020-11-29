@@ -198,8 +198,8 @@ def main():
     #initialize prediction (must be trained across graphs)
     for i in range(len(graphs)):
         #initialize word2vec (must be reinitialized for each graph)
-        #numNodes = len(graphs[i].nodes())
-        #embed_model = Node2Vec(numNodes)
+        numNodes = len(graphs[i].nodes())
+        embed_model = Node2Vec(numNodes)
 
         #get random walks and return as inputs and labels (skipgram)
         #pass in the added_Edges from the previous graph
@@ -207,11 +207,9 @@ def main():
             new_edges = None
         else:
             new_edges = added_Edges[i]
-        print(i)
-        print(len(graphs[i].nodes()))
         random_walks = get_randomWalks(graphs[i], random_walks, new_edges, .125, .5, 40, 10)
 
-    #TODO, append walks
+        #TODO, append walks
 
         '''
         data, nodetoID_dict = Node2Vec_getData(random_walks, numNodes, embed_model.window_size)
