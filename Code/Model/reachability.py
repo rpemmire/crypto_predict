@@ -4,6 +4,8 @@ from tensorflow.keras import Model
 from preprocess import get_reachabilities
 from preprocess import get_randomWalks
 from preprocess import Node2Vec_getData
+from preprocess import Prediction_getData
+
 
 class Node2Vec(tf.keras.Model):
     def __init__(self, vocab_size):
@@ -13,7 +15,7 @@ class Node2Vec(tf.keras.Model):
         :param vocab_size: The number of unique words in the data
         """
 
-        super(Model, self).__init__()
+        super(Node2Vec, self).__init__()
         '''
         Initialize embedding matrix, linear layer, optimizer, sizes, etc.
         '''
@@ -24,7 +26,13 @@ class Node2Vec(tf.keras.Model):
 
         self.learning_rate = 0.001
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
-        self.epochs = 100
+        #THIS SHOULDN"T ACTUALLY BE 1
+        self.epochs = 1
+
+        #TODO: Fill in
+        self.E = tf.Variable(tf.random.truncated_normal([self.vocab_sz,self.embedding_sz], stddev=.1))
+        self.W = tf.Variable(tf.random.truncated_normal([self.embedding_sz, self.vocab_sz], stddev=.1))
+        self.b = tf.Variable(tf.random.truncated_normal([self.vocab_sz], stddev=.1))
 
 
 
@@ -32,18 +40,7 @@ class Node2Vec(tf.keras.Model):
         """
         Basic embedding to linear layer
         """
-        #TODO: Fill in
-        self.E = tf.Variable(tf.random.truncated_normal([self.vocab_sz,self.embedding_sz], stddev=.1))
-        self.W = tf.Variable(tf.random.truncated_normal([self.embedding_sz, self.vocab_sz], stddev=.1))
-        self.b = tf.Variable(tf.random.truncated_normal([self.vocab_sz], stddev=.1))
 
-
-        #embedding layer output has to be (batch_size, window_size, embedding_size)
-        #embeddings = []
-        '''
-        Keras embedding layer to linear output layer
-
-        '''
 
 
         embedding = tf.nn.embedding_lookup(self.E,inputs) #output of embedding is batch_size * embedding_size
@@ -55,28 +52,26 @@ class Node2Vec(tf.keras.Model):
         """
         Follow loss in the paper
         """
-
-        #TODO: Fill in
-        #We recommend using tf.keras.losses.sparse_categorical_crossentropy
-        #https://www.tensorflow.org/api_docs/python/tf/keras/losses/sparse_categorical_crossentropy
         losses = tf.nn.sparse_softmax_cross_entropy_with_logits(labels, probs)
         return tf.reduce_mean(losses)
 
 
 class Predictor(tf.keras.Model):
-    def __init__(self, vocab_size):
+    def __init__(self):
+
+        super(Predictor, self).__init__()
         """
         Basic feed forward network taking in two embeddings and outputting label 1 or 0
 
         :param vocab_size: The number of unique words in the data
         """
 
-        super(Model, self).__init__()
+
         self.hidden_layer_sz = 256 #might need to change
         self.num_classes = 2
-        self.layer1 = tf.keras.layers.Dense(self.hidden_layer_size, activation='relu', name='pred_layer_1')
-        self.layer2 = tf.keras.layers.Dense(self.hidden_layer_size, activation='relu', name='pred_layer_1')
-        self.layer3 = tf.keras.layers.Dense(self.num_classes, activation='softmax', name='pred_layer_1')
+        self.layer1 = tf.keras.layers.Dense(self.hidden_layer_sz, activation='relu')
+        self.layer2 = tf.keras.layers.Dense(self.hidden_layer_sz, activation='relu')
+        self.layer3 = tf.keras.layers.Dense(self.num_classes, activation='softmax')
 
 
     def call(self, inputs):
@@ -136,13 +131,16 @@ def train_Node2Vec(model, data):
     for ep in range(model.epochs):
         curr_loss = 0
         step = 0
-        for start, end in zip(range(0, len(data) - model.batch_size, model.batch_size), range(model.batch_size, len(data), model.batch_size)):
-            batch_X = data[start:end, 0]
-            batch_Y = data[start:end, 1]
+        # for start, end in zip(range(0, len(data) - model.batch_size, model.batch_size), range(model.batch_size, len(data), model.batch_size)):
+        #for i in range(0,len(data),model.batch_size):
+        for i in range(0,1,model.batch_size):
+            batch_X = data[i:i+model.batch_size, 0]
+            batch_Y = data[i:i+model.batch_size, 0]
             with tf.GradientTape() as tape:
               probs = model.call(batch_X)
               loss = model.loss(probs, batch_Y)
-              print("node2vec", start/model.batch_size)
+              print(data.shape)
+              print("node2vec", i/len(data))
             curr_loss += loss
             step += 1
             gradients = tape.gradient(loss, model.trainable_variables)
@@ -160,18 +158,20 @@ def train_Predict(model, train_inputs, train_labels):
 
     loss_list = []
     #iterating through dataset with batch size
-    for start, end in zip(range(0, len(train_inputs) - model.batch_size, model.batch_size), range(model.batch_size, len(test_inputs), model.batch_size)):
-        batch_X = data[start:end, :]
-        batch_Y = data[start:end, :]
+    # for start, end in zip(range(0, len(train_inputs) - model.batch_size, model.batch_size), range(model.batch_size, len(train_inputs), model.batch_size)):
+    #for i in range(0,len(train_inputs),model.batch_size):
+    for i in range(0,1,model.batch_size):
+        batch_X = train_inputs[i:i+model.batch_size]
+        batch_Y = train_labels[i:i+model.batch_size]
         #updating gradients
         with tf.GradientTape() as tape:
             probs = model.call(batch_X, False)
             loss = model.loss(probs, batch_Y)
-            model.loss_list.append(loss)
-            print("train predict", start/model.batch_size)
+            loss_list.append(loss)
+            print("train predict", i/model.batch_size)
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-    return model.loss_list
+    return loss_list
 
 
 def test_Predict(model, test_inputs, test_labels):
@@ -181,15 +181,19 @@ def test_Predict(model, test_inputs, test_labels):
     acc_list = []
     f1_list = []
     #iterating through dataset with batch size
-    for start, end in zip(range(0, len(train_inputs) - model.batch_size, model.batch_size), range(model.batch_size, len(test_inputs), model.batch_size)):
-        batch_X = data[start:end, :]
-        batch_Y = data[start:end, :]
+    # for start, end in zip(range(0, len(train_inputs) - model.batch_size, model.batch_size), range(model.batch_size, len(test_inputs)-model.batch_size, model.batch_size)):
+    #     batch_X = data[start:end, :]
+    #     batch_Y = data[start:end, :]
+    #for i in range(0,len(test_inputs),model.batch_size):
+    for i in range(0,1,model.batch_size):
+        batch_X = test_inputs[i:i+model.batch_size]
+        batch_Y = test_labels[i:i+model.batch_size]
         #updating gradients
         probs = model.call(batch_X, False)
-        print("test predict", start/model.batch_size)
+        print("test predict", i/model.batch_size)
         acc_list.append(model.accuracy(probs, labels))
         f1_list.append(model.f1(probs, labels))
-    return avg(acc_list), avg(f1_list)
+    return sum(acc_list)/len(acc_list), sum(f1_list)/len(f1_list)
 
 
 def main():
@@ -203,9 +207,9 @@ def main():
 
 
 
-    #predict_model = Predictor()
+    predict_model = Predictor()
     #initialize prediction (must be trained across graphs)
-    for i in range(len(graphs)):
+    for i in range(len(graphs)-1):
         #initialize word2vec (must be reinitialized for each graph)
         numNodes = len(graphs[i].nodes())
         embed_model = Node2Vec(numNodes)
@@ -227,8 +231,8 @@ def main():
         print('training node2vec')
         train_Node2Vec(embed_model, tf.convert_to_tensor(data))
 
-        embeddings = model.E.read_value()
-        id2Node_dict = {i: w for w, i in nodetoID.items()}
+        embeddings = embed_model.E.read_value()
+        id2Node_dict = {i: w for w, i in nodetoID_dict.items()}
 
         #train a model on the graph to identify the correct edge weight
             #inputs: (node combos, their respective embedding combos)
@@ -236,7 +240,7 @@ def main():
         print('getting train data for predict')
         train_inputs, train_labels = Prediction_getData(embeddings, id2Node_dict , graphs[i])
         print('training predict')
-        train_Predict(predict_model, train_inputs, train_labels)
+        loss_list = train_Predict(predict_model, train_inputs, train_labels)
 
         #test prediction model on the next graph
         print('getting test data for predict')

@@ -6,6 +6,7 @@ import networkx as nx
 import random
 import queue as q
 import random
+import itertools
 
 #hyperparameters
 decay_rate = 1/2 #1/(2^delta_t)
@@ -292,13 +293,15 @@ def Prediction_getData(embeddings, idtoNodeid, G):
     indices = list(range(num_words))
 
     #get all possible pairs of words
-    pairs = []
-    for i in indices:
-        for j in indices:
-            pairs.append(zip(i, j))
+    #use combinatorics using itertools itertools.combinations('abcd',2)
+    pairs = []:
+    for i in range(len(indices)):
+        for j in range(len(indices)):
+            pairs.append([i, j])
 
-
+    print('translating to embeddings')
     #translate all to embeddings
+    '''
     inputs = []
     outputs = []
     for pair in pairs:
@@ -315,6 +318,20 @@ def Prediction_getData(embeddings, idtoNodeid, G):
             outputs.append(1)
         else:
             outputs.append(0)
+    '''
+    pairs_ids = map(idtoNodeid, pairs)
+    pairs_embeddings = tf.nn.embedding_lookup(embeddings, pairs, max_norm=None, name=None)
+
+    for i in len(pairs_ids):
+        #turn those pairs of embeddings into inputs (concatenate each pair)
+        inputs.append(tf.concat([pairs_embeddings[0], pairs_embeddings[1]], axis=-1))
+        #check if those embeddings (in nodeID form) have connections in the graph
+        if G.has_edge(pairs_ids[0], pairs_ids[1]) and G[pairs_ids[0]][pairs_ids[1]]["weight"] >= 1:
+            outputs.append(1)
+        else:
+            outputs.append(0)
+
+
 
 
     #negative sampling of outputs of 0 until outputs are equal
