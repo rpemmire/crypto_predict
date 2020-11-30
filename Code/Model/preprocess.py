@@ -190,7 +190,9 @@ def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_p
                 walk.append(1)
                 walk_mat[walk_index] = walk
                 walk_index+=1
-                print(walk_index)
+
+                #print(walk_index)
+
                 matched = True
             node_dict[node] +=1
             if node_dict[node] == walks_per_node:
@@ -201,10 +203,7 @@ def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_p
                 ind = 0
             if num_times == 40:
                 break
-    print(size)
-    print(num_finished)
-    print(np.count_nonzero(walk_mat))
-    print(walk_mat[:,:])
+
 
 
     print('second')
@@ -272,13 +271,19 @@ def Node2Vec_getData(randomWalks, numNodes, window_sz):
     #zip up words and indices
     vocabdict = dict(zip(list(vocab), indices))
 
-    print(len(vocabdict))
+
 
     pairs =[]
     for walk in randomWalks:
         walk_ids = [vocabdict[i] for i in walk]
-        pairs.append(tf.keras.preprocessing.sequence.skipgrams(walk_ids, numNodes, window_size = window_sz, negative_samples=0.0))
-    data = np.reshape(np.array(pairs), (-1, 2))
+        pairs.append(np.array(tf.keras.preprocessing.sequence.skipgrams(walk_ids, numNodes, window_size = window_sz, negative_samples=0.0))[0])
+    #data = np.reshape(np.array(pairs), (-1, 2))
+    print(np.size(np.array(pairs)))
+    data = pairs
+
+    # for i in range(np.shape(data)[0]):
+    #     for j in range(np.shape(arr)[0]):
+    #         data[i][j] = np.array(data[i][j])
 
     return data, vocabdict
 

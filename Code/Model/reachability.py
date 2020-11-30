@@ -3,6 +3,7 @@ import numpy as np
 from tensorflow.keras import Model
 from preprocess import get_reachabilities
 from preprocess import get_randomWalks
+from preprocess import Node2Vec_getData
 
 class Node2Vec(tf.keras.Model):
     def __init__(self, vocab_size):
@@ -16,6 +17,7 @@ class Node2Vec(tf.keras.Model):
         '''
         Initialize embedding matrix, linear layer, optimizer, sizes, etc.
         '''
+        self.batch_size = 1000 #can change
         self.vocab_sz = vocab_size
         self.embedding_sz = 128
         self.window_size = 2
@@ -42,6 +44,8 @@ class Node2Vec(tf.keras.Model):
         Keras embedding layer to linear output layer
 
         '''
+
+
         embedding = tf.nn.embedding_lookup(self.E,inputs) #output of embedding is batch_size * embedding_size
         #embedding*W is batch_size*vocab_size
         logits = tf.matmul(embedding,self.W) + self.b
@@ -189,7 +193,7 @@ def test_Predict(model, test_inputs, test_labels):
 def main():
     prev_walk = None
     #get all 10 graphs and their random sequences
-    data_path = '../../data/first100k.dat.xz'
+    data_path = '../../Data/first100k.dat.xz'
     #returns new added edges for all graphs and all graphs
     graphs, added_Edges = get_reachabilities(data_path, .125, .5)
     random_walks = None
@@ -210,12 +214,15 @@ def main():
         random_walks = get_randomWalks(graphs[i], random_walks, new_edges, .125, .5, 40, 10)
 
         #TODO, append walks
+        purged_walks = random_walks[:,0:40]
+        data, nodetoID_dict = Node2Vec_getData(purged_walks, numNodes, embed_model.window_size)
 
-        '''
-        data, nodetoID_dict = Node2Vec_getData(random_walks, numNodes, embed_model.window_size)
 
         #train word2vec model to get embeddings
-        train_Node2Vec(embed_model, data)
+        print(data)
+        train_Node2Vec(embed_model, tf.convert_to_tensor(np.array(data)))
+
+        '''
         embeddings = model.E.read_value()
         id2Node_dict = {i: w for w, i in nodetoID.items()}
 
