@@ -59,7 +59,7 @@ class Node2Vec(tf.keras.Model):
         #TODO: Fill in
         #We recommend using tf.keras.losses.sparse_categorical_crossentropy
         #https://www.tensorflow.org/api_docs/python/tf/keras/losses/sparse_categorical_crossentropy
-        losses = tf.nn.sparse_softmax_cross_entropy_with_logits(labels, logits)
+        losses = tf.nn.sparse_softmax_cross_entropy_with_logits(labels, probs)
         return tf.reduce_mean(losses)
 
 
@@ -142,6 +142,7 @@ def train_Node2Vec(model, data):
             with tf.GradientTape() as tape:
               probs = model.call(batch_X)
               loss = model.loss(probs, batch_Y)
+              print("node2vec", start/model.batch_size)
             curr_loss += loss
             step += 1
             gradients = tape.gradient(loss, model.trainable_variables)
@@ -164,9 +165,10 @@ def train_Predict(model, train_inputs, train_labels):
         batch_Y = data[start:end, :]
         #updating gradients
         with tf.GradientTape() as tape:
-                probs = model.call(batch_X, False)
-                loss = model.loss(probs, batch_Y)
-                model.loss_list.append(loss)
+            probs = model.call(batch_X, False)
+            loss = model.loss(probs, batch_Y)
+            model.loss_list.append(loss)
+            print("train predict", start/model.batch_size)
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     return model.loss_list
@@ -184,7 +186,7 @@ def test_Predict(model, test_inputs, test_labels):
         batch_Y = data[start:end, :]
         #updating gradients
         probs = model.call(batch_X, False)
-
+        print("test predict", start/model.batch_size)
         acc_list.append(model.accuracy(probs, labels))
         f1_list.append(model.f1(probs, labels))
     return avg(acc_list), avg(f1_list)
@@ -195,8 +197,11 @@ def main():
     #get all 10 graphs and their random sequences
     data_path = '../../Data/first100k.dat.xz'
     #returns new added edges for all graphs and all graphs
+    print('creating graphs')
     graphs, added_Edges = get_reachabilities(data_path, .125, .5)
     random_walks = None
+
+
 
     #predict_model = Predictor()
     #initialize prediction (must be trained across graphs)
@@ -219,25 +224,28 @@ def main():
 
 
         #train word2vec model to get embeddings
-        print(data)
-        train_Node2Vec(embed_model, tf.convert_to_tensor(np.array(data)))
+        print('training node2vec')
+        train_Node2Vec(embed_model, tf.convert_to_tensor(data))
 
-        '''
         embeddings = model.E.read_value()
         id2Node_dict = {i: w for w, i in nodetoID.items()}
 
         #train a model on the graph to identify the correct edge weight
             #inputs: (node combos, their respective embedding combos)
             #labels: (whether or not those tranactions happen (if edge weight>1))
+        print('getting train data for predict')
         train_inputs, train_labels = Prediction_getData(embeddings, id2Node_dict , graphs[i])
+        print('training predict')
         train_Predict(predict_model, train_inputs, train_labels)
 
         #test prediction model on the next graph
+        print('getting test data for predict')
         test_inputs, test_labels = Prediction_getData(embeddings, id2Node_dict, graphs[i+1])
+        print('testing predict')
         acc, f1 = test_Predict(predict_model, test_inputs, test_labels)
 
         print("reachabilities", i+1, acc, f1)
-        '''
+
 
     pass
 

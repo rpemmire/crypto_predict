@@ -176,7 +176,7 @@ def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_p
     for node in nodes:
         node_dict[node] = 0
     num_finished = 0
-    print('first')
+    #print('first')
     while not num_finished == len(nodes):
         walk = generate_walk(G, length)
         matched = False
@@ -206,10 +206,10 @@ def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_p
 
 
 
-    print('second')
+    #print('second')
     if prev_walks is not None:
 
-        print("updating prevwalks")
+        #print("updating prevwalks")
         for row in range(np.shape(prev_walks)[0]-1,-1,-1):
             #print(row)
             if prev_walks[row,39] in new_Edges:
@@ -222,7 +222,7 @@ def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_p
                 indices.append(row)
         prev_walks = np.delete(prev_walks,indices,0)
 
-        print('before stiack')
+        #print('before stiack')
         final = np.concatenate([walk_mat,prev_walks], axis = 0)
     else:
         final = walk_mat
@@ -276,14 +276,11 @@ def Node2Vec_getData(randomWalks, numNodes, window_sz):
     pairs =[]
     for walk in randomWalks:
         walk_ids = [vocabdict[i] for i in walk]
-        pairs.append(np.array(tf.keras.preprocessing.sequence.skipgrams(walk_ids, numNodes, window_size = window_sz, negative_samples=0.0))[0])
-    #data = np.reshape(np.array(pairs), (-1, 2))
-    print(np.size(np.array(pairs)))
-    data = pairs
+        pairs.append(np.array(tf.keras.preprocessing.sequence.skipgrams(walk_ids, numNodes, window_size = window_sz, negative_samples=0.0)[0]))
 
-    # for i in range(np.shape(data)[0]):
-    #     for j in range(np.shape(arr)[0]):
-    #         data[i][j] = np.array(data[i][j])
+    data = np.concatenate(pairs, 0)
+
+
 
     return data, vocabdict
 
