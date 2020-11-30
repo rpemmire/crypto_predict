@@ -294,63 +294,57 @@ def Prediction_getData(embeddings, idtoNodeid, G):
 
     #get all possible pairs of words
     #use combinatorics using itertools itertools.combinations('abcd',2)
-    pairs = []:
-    for i in range(len(indices)):
-        for j in range(len(indices)):
-            pairs.append([i, j])
+    pairs = list(itertools.combinations(indices, 2))
+    pairs = [list(pair) for pair in pairs]
+
 
     print('translating to embeddings')
     #translate all to embeddings
-    '''
-    inputs = []
-    outputs = []
-    for pair in pairs:
-        src = idtoNodeid[pair[0]]
-        dst = idtoNodeid[pair[1]]
-        pair[0] = tf.nn.embedding_lookup(embeddings, pair[0], max_norm=None, name=None)
-        pair[1] = tf.nn.embedding_lookup(embeddings, pair[1], max_norm=None, name=None)
 
-
-        #turn those pairs of embeddings into inputs (concatenate each pair)
-        inputs.append(tf.concat([pair[0], pair[1]], axis=-1))
-        #check if those embeddings (in nodeID form) have connections in the graph
-        if G.has_edge(src, dst) and G[src][dst]["weight"] >= 1:
-            outputs.append(1)
-        else:
-            outputs.append(0)
-    '''
-    pairs_ids = map(idtoNodeid, pairs)
+    #pairs_ids = map(idtoNodeid, pairs)
+    pairs_ids = np.vectorize(idtoNodeid.get)(pairs)
     pairs_embeddings = tf.nn.embedding_lookup(embeddings, pairs, max_norm=None, name=None)
 
-    for i in len(pairs_ids):
-        #turn those pairs of embeddings into inputs (concatenate each pair)
-        inputs.append(tf.concat([pairs_embeddings[0], pairs_embeddings[1]], axis=-1))
+    #turn those pairs of embeddings into inputs (concatenate each pair)
+    print(pairs_embeddings.shape)
+    inputs = tf.reshape(pairs_embeddings, (len(pairs_ids), -1))
+    print(inputs.shape)
+    '''
+    outputs = []
+    for i in range(len(pairs_ids)):
+        print(i/len(pairs_ids))
         #check if those embeddings (in nodeID form) have connections in the graph
-        if G.has_edge(pairs_ids[0], pairs_ids[1]) and G[pairs_ids[0]][pairs_ids[1]]["weight"] >= 1:
-            outputs.append(1)
-        else:
+
+        try:
+            if G[pairs_ids[i,0]][pairs_ids[i,1]]["weight"] >= 1:
+                outputs.append(1)
+            else:
+                outputs.append(0)
+        except:
             outputs.append(0)
+    '''
+    outputs = []
+    for i in range(len(pairs_ids)):
+        #print(i/len(pairs_ids))
+        outputs.append(random.randint(0,1))
 
-
-
-
+    print('negative sampling')
     #negative sampling of outputs of 0 until outputs are equal
+    print('get indices')
     indices = []
-    for i in range(0, len(outputs)) :
+    for i in range(0, len(outputs)):
         if outputs[i] == 0:
             indices.append(i)
-    indices = random.shuffle(indices)
+    random.shuffle(indices)
 
     #get number of outputs with 1
     num_out1 = outputs.count(1)
     num_out0 = len(outputs) - num_out1
     diff = num_out0 - num_out1
 
-    for i in range(len(diff)):
-        #delete output and input at indices[i]
-        outputs.pop(i)
-        inputs.pop(i)
-
-
+    print('delete inputs')
+    inputs = np.delete(inputs, indices[:diff], axis = 0)
+    print('delete outputs')
+    outputs = np.delete(outputs, indices[:diff])
 
     return inputs, outputs
