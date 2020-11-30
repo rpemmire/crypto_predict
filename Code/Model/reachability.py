@@ -165,10 +165,10 @@ def train_Predict(model, train_inputs, train_labels):
     #for i in range(0,len(train_inputs),model.batch_size):
     for i in range(0,1,model.batch_size):
         batch_X = train_inputs[i:i+model.batch_size, :]
-        batch_Y = train_labels[i:i+model.batch_size, :]
+        batch_Y = train_labels[i:i+model.batch_size]
         #updating gradients
         with tf.GradientTape() as tape:
-            probs = model.call(batch_X, False)
+            probs = model.call(batch_X)
             loss = model.loss(probs, batch_Y)
             loss_list.append(loss)
             print("train predict", i/model.batch_size)
@@ -190,9 +190,9 @@ def test_Predict(model, test_inputs, test_labels):
     #for i in range(0,len(test_inputs),model.batch_size):
     for i in range(0,1,model.batch_size):
         batch_X = test_inputs[i:i+model.batch_size, :]
-        batch_Y = test_labels[i:i+model.batch_size, :]
+        batch_Y = test_labels[i:i+model.batch_size]
         #updating gradients
-        probs = model.call(batch_X, False)
+        probs = model.call(batch_X)
         print("test predict", i/model.batch_size)
         acc_list.append(model.accuracy(probs, labels))
         f1_list.append(model.f1(probs, labels))
