@@ -115,30 +115,6 @@ def get_reachabilities(file_path, opt_out, decay_rate):
 
     return FinalGraphs, added_Edges
 
-def get_amounts(file_path):
-    '''
-    PROCESS
-
-    Constructs either type of graph for each 10k increments of unique pairs
-
-    At next timestep,
-        - update all weights of existing nodes and edges (decay previous and add new weight)
-
-    '''
-
-    #gets list of new edges to be updated for each of 10 timesteps
-    file = lzma.open(file_path, mode='rt')
-    edges = np.loadtxt(file, int)
-    sender = edges[:,1]
-    receiver = edges[:,2]
-    weight = edges[:,3]
-
-
-    print('partitioned data')
-
-    return None
-
-
 
 def get_randomWalks(G, prev_walks, new_Edges, opt_out, d_factor, length, walks_per_node):
     #get random walks for a given graph
@@ -306,9 +282,9 @@ def Prediction_getData(embeddings, idtoNodeid, G):
     pairs_embeddings = tf.nn.embedding_lookup(embeddings, pairs, max_norm=None, name=None)
 
     #turn those pairs of embeddings into inputs (concatenate each pair)
-    print(pairs_embeddings.shape)
+    #print(pairs_embeddings.shape)
     inputs = tf.reshape(pairs_embeddings, (len(pairs_ids), -1))
-    print(inputs.shape)
+    #print(inputs.shape)
     '''
     outputs = []
     for i in range(len(pairs_ids)):

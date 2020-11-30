@@ -48,11 +48,11 @@ class Node2Vec(tf.keras.Model):
         logits = tf.matmul(embedding,self.W) + self.b
         return logits
 
-    def loss(self, probs, labels):
+    def loss(self, logits, labels):
         """
         Follow loss in the paper
         """
-        losses = tf.nn.sparse_softmax_cross_entropy_with_logits(labels, probs)
+        losses = tf.nn.sparse_softmax_cross_entropy_with_logits(labels, logits)
         return tf.reduce_mean(losses)
 
 
@@ -66,6 +66,9 @@ class Predictor(tf.keras.Model):
         :param vocab_size: The number of unique words in the data
         """
 
+        self.batch_size = 10000
+        self.learning_rate = 0.001
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
         self.hidden_layer_sz = 256 #might need to change
         self.num_classes = 2
@@ -137,8 +140,8 @@ def train_Node2Vec(model, data):
             batch_X = data[i:i+model.batch_size, 0]
             batch_Y = data[i:i+model.batch_size, 0]
             with tf.GradientTape() as tape:
-              probs = model.call(batch_X)
-              loss = model.loss(probs, batch_Y)
+              logits = model.call(batch_X)
+              loss = model.loss(logits, batch_Y)
               print(data.shape)
               print("node2vec", i/len(data))
             curr_loss += loss
