@@ -73,7 +73,7 @@ def train_Node2Vec(model, data):
               logits = model.call(batch_X)
               loss = model.loss(logits, batch_Y)
               print(data.shape)
-              print("node2vec", i/len(data))
+              print("node2vec", i/len(data), loss)
             curr_loss += loss
             step += 1
             gradients = tape.gradient(loss, model.trainable_variables)
