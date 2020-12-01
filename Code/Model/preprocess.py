@@ -32,7 +32,7 @@ def get_reachabilities(file_path, opt_out, decay_rate):
     receiver = edges[:,2]
     transactionLists = []
     pairs = list(zip(sender, receiver))
-    while len(transactionLists) < 2:
+    while len(transactionLists) < 10:
         graph_edges = []
         while len(set(graph_edges)) < 10000:
             graph_edges.append(pairs.pop(0))
@@ -217,6 +217,7 @@ def generate_walk(G,length):
 
     :return: walk - list of nodes visited
     '''
+
     # list of 40 nodes
     # get number of edges and plug output into random number gnenerator
     nodes = list(G.nodes())
@@ -235,6 +236,7 @@ def generate_walk(G,length):
         #get next node in walk
         node = neighbors[neigh_ind]
         walk.append(node)
+
     return walk
 
 def Node2Vec_getData(randomWalks, numNodes, window_sz):
@@ -243,11 +245,11 @@ def Node2Vec_getData(randomWalks, numNodes, window_sz):
 
     #convert all sequences to ints from 0 to N-1
     #use tf.keras.preprocessing.sequence.skipgrams after
-    vocab = set(np.array(randomWalks).flatten())
+    vocab = list(set(np.array(randomWalks).flatten()))
     indices = list(range(0, len(vocab)))
     #zip up words and indices
-    vocabdict = dict(zip(list(vocab), indices))
-
+    vocabdict = dict(zip(vocab, indices))
+    print(vocabdict)
 
 
     pairs =[]
@@ -267,44 +269,41 @@ def Prediction_getData(embeddings, idtoNodeid, G):
     #get numWords
     num_words = embeddings.shape[0]
     indices = list(range(num_words))
-
     #get all possible pairs of words
-    #use combinatorics using itertools itertools.combinations('abcd',2)
     pairs = list(itertools.combinations(indices, 2))
     pairs = [list(pair) for pair in pairs]
 
 
-    print('translating to embeddings')
+    print('translating inputs to embeddings')
     #translate all to embeddings
 
-    #pairs_ids = map(idtoNodeid, pairs)
-    pairs_ids = np.vectorize(idtoNodeid.get)(pairs)
-    pairs_embeddings = tf.nn.embedding_lookup(embeddings, pairs, max_norm=None, name=None)
+    pairs_ids = np.vectorize(idtoNodeid.__getitem__)(np.array(pairs, dtype = str))
 
-    #turn those pairs of embeddings into inputs (concatenate each pair)
-    #print(pairs_embeddings.shape)
+    pairs_embeddings = tf.nn.embedding_lookup(embeddings, np.array(pairs, dtype = int), max_norm=None, name=None)
     inputs = tf.reshape(pairs_embeddings, (len(pairs_ids), -1))
-    #print(inputs.shape)
-    '''
+
+    print('check graph for ground truths')
     outputs = []
     for i in range(len(pairs_ids)):
-        print(i/len(pairs_ids))
+        #print(i/len(pairs_ids))
         #check if those embeddings (in nodeID form) have connections in the graph
-
         try:
-            if G[pairs_ids[i,0]][pairs_ids[i,1]]["weight"] >= 1:
+            if G[str(int(pairs_ids[i,0]))][str(int(pairs_ids[i,1]))]["weight"] >= 1:
                 outputs.append(1)
+                #print('bingo')
             else:
                 outputs.append(0)
         except:
             outputs.append(0)
-    '''
-    outputs = []
-    for i in range(len(pairs_ids)):
-        #print(i/len(pairs_ids))
-        outputs.append(random.randint(0,1))
 
-    print('negative sampling')
+    print('negative sampling', len(inputs))
+    #get number of outputs with 1
+    num_out1 = outputs.count(1)
+    num_out0 = len(outputs) - num_out1
+    diff = num_out0 - num_out1
+    print(diff)
+
+
     #negative sampling of outputs of 0 until outputs are equal
     print('get indices')
     indices = []
@@ -313,14 +312,18 @@ def Prediction_getData(embeddings, idtoNodeid, G):
             indices.append(i)
     random.shuffle(indices)
 
-    #get number of outputs with 1
-    num_out1 = outputs.count(1)
-    num_out0 = len(outputs) - num_out1
-    diff = num_out0 - num_out1
+    indices = indices[:diff]
+    print(len(indices))
 
-    print('delete inputs')
-    inputs = np.delete(inputs, indices[:diff], axis = 0)
+
+    #either do this
+    print(inputs.shape)
+    inputs = np.delete(inputs, indices, axis = 0)
+    print(inputs.shape)
+
     print('delete outputs')
-    outputs = np.delete(outputs, indices[:diff])
+    outputs = np.delete(outputs, indices)
+
+
 
     return inputs, outputs
