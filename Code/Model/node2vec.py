@@ -10,9 +10,7 @@ import json
 class Node2Vec(tf.keras.Model):
     def __init__(self, vocab_size):
         """
-        The Model class predicts the next words in a sequence.
-
-        :param vocab_size: The number of unique words in the data
+        The Model class trains embeddings for nodes in a graph
         """
 
         super(Node2Vec, self).__init__()
@@ -34,45 +32,35 @@ class Node2Vec(tf.keras.Model):
         self.W = tf.Variable(tf.random.truncated_normal([self.embedding_sz, self.vocab_sz], stddev=.1))
         self.b = tf.Variable(tf.random.truncated_normal([self.vocab_sz], stddev=.1))
 
-
-
     def call(self, inputs):
         """
-        Basic embedding to linear layer
+        This method calls the model. It includes a basic embedding to feedforward
+        layer structure.
         """
-        embedding = tf.nn.embedding_lookup(self.E,inputs) #output of embedding is batch_size * embedding_size
-        #embedding*W is batch_size*vocab_size
+        embedding = tf.nn.embedding_lookup(self.E,inputs)
         logits = tf.matmul(embedding,self.W) + self.b
         return logits
 
     def loss(self, logits, labels):
         """
-        Follow loss in the paper
+        Loss for a classification problem uses cross entropy loss with logits
         """
         losses = tf.nn.sparse_softmax_cross_entropy_with_logits(labels, logits)
         return tf.reduce_mean(losses)
 
 def train_Node2Vec(model, data):
     """
-    Runs through one epoch - all training examples.
-
-    :param model: the initilized model to use for forward and backward pass
-    :param train_inputs: train inputs (all inputs for training) of shape (num_inputs,)
-    :param train_labels: train labels (all labels for training) of shape (num_labels,)
-    :return: None
+    Runs through the training data of skipgrams.
     """
     for ep in range(model.epochs):
         curr_loss = 0
         step = 0
-        # for start, end in zip(range(0, len(data) - model.batch_size, model.batch_size), range(model.batch_size, len(data), model.batch_size)):
         for i in range(0,len(data),model.batch_size):
-        #for i in range(0,1,model.batch_size):
             batch_X = data[i:i+model.batch_size, 0]
             batch_Y = data[i:i+model.batch_size, 0]
             with tf.GradientTape() as tape:
               logits = model.call(batch_X)
               loss = model.loss(logits, batch_Y)
-
             curr_loss += loss
             step += 1
             gradients = tape.gradient(loss, model.trainable_variables)
@@ -82,18 +70,21 @@ def train_Node2Vec(model, data):
 
     pass
 
+
 def main():
-    prev_walk = None
+
     #get all 10 graphs and their random sequences
     data_path = '../../Data/first100k.dat.xz'
-    #returns new added edges for all graphs and all graphs
     print('creating graphs')
     graphs, added_Edges = get_reachabilities(data_path, .125, .5)
+
+    #variable to keep track of random walks which are decayed at next time step
     random_walks = None
-    print('len graphs ', len(graphs))
+
 
     for i in range(len(graphs)):
         #get random walks and return as inputs and labels (skipgram)
+
         #pass in the added_Edges from the previous graph
         print('getting random walks')
         if i ==0:
@@ -103,7 +94,7 @@ def main():
         random_walks = get_randomWalks(graphs[i], random_walks, new_edges, .125, .5, 40, 10)
 
         if i >4:
-            #TODO, append walks
+            #walks with removed decay factor
             purged_walks = random_walks[:,0:40]
             data, nodetoID_dict = Node2Vec_getData(purged_walks, 1)
             embed_model = Node2Vec(len(nodetoID_dict))
@@ -117,6 +108,7 @@ def main():
 
             #save, graph, embeddings, and dict
             #as graph_i, embeddings_i, idDict_i
+            #files later used for predict
             savePath = '../../Data/Node2Vec_outputs/'
             nx.write_weighted_edgelist(graphs[i], savePath + 'graph_' + str(i) + '.txt')
             np.save(savePath + 'embeddings_' + str(i), embeddings)
@@ -124,7 +116,6 @@ def main():
             f = open(savePath + 'idDict_' + str(i) + '.json', 'w')
             f.write(json.dumps(id2Node_dict))
             f.close()
-
 
             print('saved files')
 
