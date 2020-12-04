@@ -22,12 +22,12 @@ class Node2Vec(tf.keras.Model):
         self.batch_size = 1000 #can change
         self.vocab_sz = vocab_size
         self.embedding_sz = 128
-        self.window_size = 2
+
+        self.window_size = 1
+        self.epochs = 1
 
         self.learning_rate = 0.001
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
-        #THIS SHOULDN"T ACTUALLY BE 1
-        self.epochs = 2
 
         #TODO: Fill in
         self.E = tf.Variable(tf.random.truncated_normal([self.vocab_sz,self.embedding_sz], stddev=.1))
@@ -72,15 +72,13 @@ def train_Node2Vec(model, data):
             with tf.GradientTape() as tape:
               logits = model.call(batch_X)
               loss = model.loss(logits, batch_Y)
-              print(data.shape)
-              print("node2vec", i/len(data), loss)
+
             curr_loss += loss
             step += 1
             gradients = tape.gradient(loss, model.trainable_variables)
             model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
-        if ep % 10 == 0:
-            print('Epoch %d\tLoss: %.3f' % (ep, curr_loss / step))
+            print("node2vec", i/len(data), loss, 'Epoch %d\tLoss: %.3f' % (ep, curr_loss / step))
 
     pass
 
@@ -93,11 +91,8 @@ def main():
     graphs, added_Edges = get_reachabilities(data_path, .125, .5)
     random_walks = None
     print('len graphs ', len(graphs))
-    for i in range(len(graphs)):
-        #initialize word2vec (must be reinitialized for each graph)
-        numNodes = len(graphs[i].nodes())
-        embed_model = Node2Vec(numNodes)
 
+    for i in range(len(graphs)):
         #get random walks and return as inputs and labels (skipgram)
         #pass in the added_Edges from the previous graph
         print('getting random walks')
@@ -107,29 +102,31 @@ def main():
             new_edges = added_Edges[i]
         random_walks = get_randomWalks(graphs[i], random_walks, new_edges, .125, .5, 40, 10)
 
-        #TODO, append walks
-        purged_walks = random_walks[:,0:40]
-        data, nodetoID_dict = Node2Vec_getData(purged_walks, numNodes, embed_model.window_size)
+        if i >4:
+            #TODO, append walks
+            purged_walks = random_walks[:,0:40]
+            data, nodetoID_dict = Node2Vec_getData(purged_walks, 1)
+            embed_model = Node2Vec(len(nodetoID_dict))
 
-        #train word2vec model to get embeddings
-        print('training node2vec')
-        train_Node2Vec(embed_model, tf.convert_to_tensor(data))
+            #train word2vec model to get embeddings
+            print('training node2vec')
+            train_Node2Vec(embed_model, tf.convert_to_tensor(data))
 
-        embeddings = embed_model.E.read_value()
-        id2Node_dict = {nodetoID_dict[j]: j for j in nodetoID_dict}
+            embeddings = embed_model.E.read_value()
+            id2Node_dict = {nodetoID_dict[j]: j for j in nodetoID_dict}
 
-        #save, graph, embeddings, and dict
-        #as graph_i, embeddings_i, idDict_i
-        savePath = '../../Data/Node2Vec_outputs/'
-        nx.write_weighted_edgelist(graphs[i], savePath + 'graph_' + str(i) + '.txt')
-        np.save(savePath + 'embeddings_' + str(i), embeddings)
+            #save, graph, embeddings, and dict
+            #as graph_i, embeddings_i, idDict_i
+            savePath = '../../Data/Node2Vec_outputs/'
+            nx.write_weighted_edgelist(graphs[i], savePath + 'graph_' + str(i) + '.txt')
+            np.save(savePath + 'embeddings_' + str(i), embeddings)
 
-        f = open(savePath + 'idDict_' + str(i) + '.json', 'w')
-        f.write(json.dumps(id2Node_dict))
-        f.close()
+            f = open(savePath + 'idDict_' + str(i) + '.json', 'w')
+            f.write(json.dumps(id2Node_dict))
+            f.close()
 
 
-        print('saved files')
+            print('saved files')
 
     pass
 

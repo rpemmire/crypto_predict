@@ -108,7 +108,7 @@ def train_Predict(model, train_inputs, train_labels):
             probs = model.call(batch_X)
             loss = model.loss(probs, batch_Y)
             loss_list.append(loss)
-            print("train predict", i/len(train_inputs), loss)
+            #print("train predict", i/len(train_inputs), loss)
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     return loss_list
@@ -118,7 +118,7 @@ def test_Predict(model, test_inputs, test_labels):
     """
     returns average accuracy, average f1 score
     """
-    acc_list = []
+    acc_sum = 0
     predicted_list = []
     for i in range(0,len(test_inputs),model.batch_size):
     #for i in range(0,1,model.batch_size):
@@ -129,13 +129,13 @@ def test_Predict(model, test_inputs, test_labels):
 
         accuracy = model.accuracy(probs, batch_Y)
 
-        print("test predict", i/len(test_inputs))
-        acc_list.append(accuracy)
+        #print("test predict", i/len(test_inputs))
+        acc_sum += accuracy*len(batch_Y)
         predicted_list.append(probs)
     predicted_list = tf.concat(predicted_list, axis = 0)
-    print(predicted_list.shape)
+    #print(predicted_list.shape)
     f1 = model.f1(predicted_list, test_labels)
-    return sum(acc_list)/len(acc_list), f1
+    return acc_sum/len(test_labels), f1
 
 
 def load_predict_data(t, folder_path):
@@ -165,18 +165,18 @@ def main():
         #train a model on the graph to identify the correct edge weight
             #inputs: (node combos, their respective embedding combos)
             #labels: (whether or not those tranactions happen (if edge weight>1))
-        print('getting train data for predict')
+        #print('getting train data for predict')
         train_inputs, train_labels = Prediction_getData(embeddings, id2Node_dict , graph1)
         print('training predict')
         loss_list = train_Predict(predict_model, train_inputs, train_labels)
 
         #test prediction model on the next graph
-        print('getting test data for predict')
+        #print('getting test data for predict')
         test_inputs, test_labels = Prediction_getData(embeddings, id2Node_dict, graph2)
         print('testing predict')
         acc, f1 = test_Predict(predict_model, test_inputs, test_labels)
 
-        print("reachabilities", i+1, acc, f1)
+        print("reachabilities", i+1, 'accuracy',acc, 'f1',f1)
 
     pass
 

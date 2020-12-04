@@ -90,7 +90,8 @@ def get_reachabilities(file_path, opt_out, decay_rate):
                 G[src][dst]["weight"] +=1
             # else add in new edge with attribute 1
             else:
-                G.add_edge(src,dst,weight=1)
+                G.add_edge(src,dst)
+                G[src][dst]["weight"] +=1
                 added_Edges[graph].append(src)
 
         #3) update all nodes, if sum of edge weights < threshold, delete node
@@ -239,7 +240,7 @@ def generate_walk(G,length):
 
     return walk
 
-def Node2Vec_getData(randomWalks, numNodes, window_sz):
+def Node2Vec_getData(randomWalks, window_sz):
     #return skipgram (labels, outputs) tuple np, with a dictionary, (all translated from 1 to n)
 
 
@@ -249,80 +250,79 @@ def Node2Vec_getData(randomWalks, numNodes, window_sz):
     indices = list(range(0, len(vocab)))
     #zip up words and indices
     vocabdict = dict(zip(vocab, indices))
-    print(vocabdict)
+
+    #print(vocabdict)
 
 
     pairs =[]
     for walk in randomWalks:
         walk_ids = [vocabdict[i] for i in walk]
-        pairs.append(np.array(tf.keras.preprocessing.sequence.skipgrams(walk_ids, numNodes, window_size = window_sz, negative_samples=0.0)[0]))
+        pairs.append(np.array(tf.keras.preprocessing.sequence.skipgrams(walk_ids, len(vocabdict), window_size = window_sz, negative_samples=0.0)[0]))
 
     data = np.concatenate(pairs, 0)
 
-
+    np.random.shuffle(data)
 
     return data, vocabdict
 
 def Prediction_getData(embeddings, idtoNodeid, G):
     #return pairs of embeddings(concatenated), and ground truths
+    nodetoID_dict = {idtoNodeid[j]: j for j in idtoNodeid}
 
-    #get numWords
-    num_words = embeddings.shape[0]
-    indices = list(range(num_words))
-    #get all possible pairs of words
-    pairs = list(itertools.combinations(indices, 2))
-    pairs = [list(pair) for pair in pairs]
-
-
-    print('translating inputs to embeddings')
-    #translate all to embeddings
-
-    pairs_ids = np.vectorize(idtoNodeid.__getitem__)(np.array(pairs, dtype = str))
-
-    pairs_embeddings = tf.nn.embedding_lookup(embeddings, np.array(pairs, dtype = int), max_norm=None, name=None)
-    inputs = tf.reshape(pairs_embeddings, (len(pairs_ids), -1))
-
-    print('check graph for ground truths')
     outputs = []
-    for i in range(len(pairs_ids)):
-        #print(i/len(pairs_ids))
-        #check if those embeddings (in nodeID form) have connections in the graph
+    inputs = []
+    negs = 0
+    transition = np.zeros((embeddings.shape[0], embeddings.shape[0]))
+    i = 0
+    #(store where there were transactions) transition matrix (nxn for len(graph1))
+    edgeList = list(G.edges(data='weight', default=0))
+    for edge in edgeList:
+        i+=1
+        #print(i/len(edgeList))
+        src = edge[0]
+        dst = edge[1]
+        weight = edge[2]
         try:
-            if G[str(int(pairs_ids[i,0]))][str(int(pairs_ids[i,1]))]["weight"] >= 1:
+            IDsrc = int(nodetoID_dict[int(src)])
+            IDdst = int(nodetoID_dict[int(dst)])
+            if weight >=1:
+                transition[IDsrc,IDdst] = 1
+                #transition[IDdst,IDsrc] = 1
+                inputs.append([IDsrc, IDdst])
+                #inputs.append([IDdst, IDsrc])
                 outputs.append(1)
-                #print('bingo')
-            else:
-                outputs.append(0)
+                #outputs.append(1)
         except:
+            pass
+
+    positives = len(inputs)
+    while negs < positives*30:
+        x = random.randint(0,embeddings.shape[0]-1)
+        y = random.randint(0,embeddings.shape[0]-1)
+        if transition[x,y] != 1 and transition[y,x] != 1:
+            transition[x,y] = 1
+            #transition[y,x] = 1
+            negs += 1
+            #print('random sampling', negs/len(inputs), len(inputs))
+            inputs.append([x,y])
             outputs.append(0)
-
-    print('negative sampling', len(inputs))
-    #get number of outputs with 1
-    num_out1 = outputs.count(1)
-    num_out0 = len(outputs) - num_out1
-    diff = num_out0 - num_out1
-    print(diff)
+            #inputs.append([y,x])
+            #outputs.append(0)
 
 
-    #negative sampling of outputs of 0 until outputs are equal
-    print('get indices')
-    indices = []
-    for i in range(0, len(outputs)):
-        if outputs[i] == 0:
-            indices.append(i)
-    random.shuffle(indices)
-
-    indices = indices[:diff]
-    print(len(indices))
 
 
-    #either do this
-    print(inputs.shape)
-    inputs = np.delete(inputs, indices, axis = 0)
-    print(inputs.shape)
+    #shuffle inputs and outputs
+    shuffleindices = list(range(len(outputs)))
+    random.shuffle(shuffleindices)
+    inputs = tf.gather(inputs, shuffleindices, axis = 0)
+    outputs = tf.gather(outputs, shuffleindices)
 
-    print('delete outputs')
-    outputs = np.delete(outputs, indices)
+    inputs = tf.nn.embedding_lookup(embeddings, np.array(inputs, dtype = int), max_norm=None, name=None)
+    inputs = tf.reshape(inputs, (len(outputs), -1))
+    print('length of data', inputs.shape)
+
+
 
 
 
