@@ -86,9 +86,10 @@ def get_reachabilities(file_path, opt_out, decay_rate):
             if max <= opt_out:
                 to_remove.append(node)
         G.remove_nodes_from(to_remove)
+
+        print("graph created, edges, nodes", len(list(G.edges())),  len(G.nodes()))
         print(len(to_remove), "nodes removed")
 
-        print("graph created", len(G.nodes()))
         graphAtT = G.copy()
         FinalGraphs.append(graphAtT)
 
