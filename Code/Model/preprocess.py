@@ -72,7 +72,7 @@ def get_reachabilities(file_path, opt_out, decay_rate):
             # else add in new edge with attribute 1
             else:
                 G.add_edge(src,dst)
-                G[src][dst]["weight"] +=1
+                G[src][dst]["weight"] =1
                 added_Edges[graph].append(src)
 
         #3) update all nodes, if sum of edge weights < threshold, delete node
@@ -296,7 +296,7 @@ def Prediction_getData(embeddings, idtoNodeid, G):
     #negative sample so positives = negatives
     #pick random negative labels to be sampled (label 0)
     positives = len(inputs)
-    while negs < positives*30:
+    while negs < positives:
         x = random.randint(0,embeddings.shape[0]-1)
         y = random.randint(0,embeddings.shape[0]-1)
         if transition[x,y] != 1 and transition[y,x] != 1:

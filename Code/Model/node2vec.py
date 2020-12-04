@@ -57,7 +57,7 @@ def train_Node2Vec(model, data):
         step = 0
         for i in range(0,len(data),model.batch_size):
             batch_X = data[i:i+model.batch_size, 0]
-            batch_Y = data[i:i+model.batch_size, 0]
+            batch_Y = data[i:i+model.batch_size, 1]
             with tf.GradientTape() as tape:
               logits = model.call(batch_X)
               loss = model.loss(logits, batch_Y)
