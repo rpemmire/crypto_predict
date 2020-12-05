@@ -144,11 +144,11 @@ def main():
         graph1, graph2 , embeddings, id2Node_dict = load_predict_data(i, '../../Data/Node2Vec_outputs/')
 
         train_inputs, train_labels = Prediction_getData(embeddings, id2Node_dict , graph1)
-        print('training predict with data length', print(len(train_labels)))
+        print('training predict with data length', len(train_labels))
         loss_list = train_Predict(predict_model, train_inputs, train_labels)
 
         test_inputs, test_labels = Prediction_getData(embeddings, id2Node_dict, graph2)
-        print('testing predict with data length', print(len(test_labels)))
+        print('testing predict with data length', len(test_labels))
         acc, f1 = test_Predict(predict_model, test_inputs, test_labels)
 
         print("reachabilities", i+1, 'accuracy',acc, 'f1',f1)
