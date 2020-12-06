@@ -94,7 +94,7 @@ def main():
         random_walks = get_randomWalks(graphs[i], random_walks, new_edges, .125, .5, 40, 10)
 
         #this is to selectively generate embeddings we haven't done
-        if i < 3:
+        if i ==5:
             #walks with removed decay factor
             purged_walks = random_walks[:,0:40]
             data, nodetoID_dict = Node2Vec_getData(purged_walks, 1)
